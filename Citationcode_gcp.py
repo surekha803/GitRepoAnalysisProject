@@ -1,3 +1,6 @@
+import csv
+
+import csvwriter as csvwriter
 from  google.cloud import bigquery
 from google.oauth2 import service_account
 import google.auth
@@ -34,24 +37,104 @@ df4 = pd.DataFrame(query_job['org'].values.tolist())
 df4.columns = 'org.'+ df4.columns
 print(df4.head())
 
-col = query_job.columns.difference(['repo','payload','actor','org'])
+col = query_job.columns.difference(['repo','actor','org'])
 df = pd.concat([query_job[col], df1,df3,df4],axis=1)
 print (df)
 
-df.to_csv(r'C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\materials\\gcp.csv',index=False)
+df.to_csv(r'C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\\materials\\gcp.csv',index=False)
 
 print(df['actor.id'].head())
 a1_grpbyrepoid=df.groupby(["repo.id","actor.id"])["actor.id"].count().reset_index(name="push_eventsby_contributor")
-a1_grpbyrepoid.to_csv(r'C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\materials\\push_eventsby_each_contri_gcp1.csv',index=False)
 
-a1_grpbyrepoid_totalcont=a1_grpbyrepoid.groupby("repo.id").push_eventsby_contributor.sum().reset_index(name="Total_number_of_contributors")
-a1_grpbyrepoid_totalcont.to_csv(r'C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\materials\\total_number_of_contributors_gcp1.csv',index=False)
+print(a1_grpbyrepoid.head())
 
-repo_countbycontri=a1_grpbyrepoid_totalcont.groupby("Total_number_of_contributors")["repo.id"].count().reset_index(name='number_of_repos')
+
+#def core_Contributors(a1_grpbyrepoid):
+#     a3=singlerepo_df.set_index('actor.id').T.to_dict('list')
+#     print(a3.head())
+#
+# print("##############",a1_grpbyrepoid)
+
+d={}
+for i in a1_grpbyrepoid['repo.id'].unique():
+    d[i] = [{a1_grpbyrepoid['actor.id'][j]: a1_grpbyrepoid['push_eventsby_contributor'][j]} for j in
+            a1_grpbyrepoid[a1_grpbyrepoid['repo.id'] == i].index]
+dic_keys=list(d.keys())
+dic_Values = list(d.values())
+print("keys",dic_keys,type(dic_keys))
+print("values",dic_Values)
+
+sum_list=[]
+avg_list = []
+for values in dic_Values:
+    print("values in first iteration",values)
+    print(type(values))
+    for j in values:
+        print(j)
+        print(type(j))
+        for k in j.keys():
+            a=int(j[k])
+             # print("values in second iteration",j,list(j.values()),type(list(j.values())))
+             # a=int(str(j.values()))
+            sum_list.append(a)
+            print(sum_list)
+    avg= sum(sum_list) / len(sum_list)
+    print("######avg",round(avg))
+    avg_list.append(round(avg))
+    sum_list.clear()
+
+print("keys list",dic_keys)
+print("avg_list",avg_list)
+
+i=0
+count=0
+count_dict={}
+from collections import defaultdict
+final_dic = defaultdict(list)
+final_valuelist =[]
+for repoid in dic_keys:
+    for values in d[repoid]:
+        print(repoid,values)
+        for k in values.keys():
+            if avg_list[i] < int(values[k]):
+                count = count + 1
+                print("condition success")
+                print("K values",k,"values",values,"avg value",avg_list[i])
+                #final_valuelist.append({k: values[k]})
+                #print(final_valuelist)
+                final_dic[repoid].append({k: values[k]})
+                count_dict[repoid]=count
+
+    i=i+1
+    final_valuelist.clear()
+    print("number of contributors", count,count_dict)
+    count=0
+print(final_dic)
+
+filename_finaldic = "C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\materials\\dict_output.txt"
+filename_contricount = "C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\materials\\contricount.txt"
+j=0
+with open(filename_finaldic,'w') as output:
+    writer = csv.writer(output)
+    for k, v in final_dic.items():
+        writer.writerow([k] + v)
+        j=j+1
+
+with open(filename_contricount,'w') as output:
+    writer = csv.writer(output)
+    for i in count_dict.items():
+        writer.writerow(i)
+
+#core_Contributors(a1_grpbyrepoid)
+
+
+data_items = count_dict.items()
+data_list = list(data_items)
+
+df1 = pd.DataFrame(data_list)
+df1.columns=["repo.id","number of contributors",]
+print(df1)
+
+repo_countbycontri=df1.groupby("number of contributors")["repo.id"].count().reset_index(name='number_of_repos')
 print(repo_countbycontri.head())
-repo_countbycontri.to_csv(r'C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\materials\\repo_count_bycontri_gcp1.csv',index=False)
-
-
-
-
-
+repo_countbycontri.to_csv(r'C:\\Users\\ASUS\\Documents\\ResearchMaterial\\materials\materials\\repo_count_bycontri.csv',index=False)
